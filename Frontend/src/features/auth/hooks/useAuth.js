@@ -12,10 +12,12 @@ export const useAuth = () => {
 
         try {
             const data = await login({ email, password })
+            sessionStorage.setItem("token", data.token)
             setUser(data.user)
             return true
 
         } catch (error) {
+            sessionStorage.removeItem("token")
             setUser(null)
             setError(error.response?.data?.message || error.message || "Unable to log in. Please try again.")
             return false
@@ -29,16 +31,17 @@ export const useAuth = () => {
 
     const handleRegister = async ({ username, email, password }) => {
         setLoading(true)
+        setError(null)
 
         try {
             const data = await register({ username, email, password })
-
+            sessionStorage.setItem("token", data.token)
             setUser(data.user)
-
+            return true
         } catch (error) {
-
+            setError(error.response?.data?.message || error.message || "Unable to register. Please try again.")
+            return false
         } finally {
-
             setLoading(false)
         }
 
@@ -48,14 +51,13 @@ export const useAuth = () => {
         setLoading(true)
 
         try {
-            const data = await logout()
-
+            await logout()
+            sessionStorage.removeItem("token")
             setUser(null)
 
         } catch (error) {
-
+            setError(error.response?.data?.message || error.message || "Unable to log out. Please try again.")
         } finally {
-
             setLoading(false)
         }
 

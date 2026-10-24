@@ -2,7 +2,13 @@ const userModel = require("../models/user.model")
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken")
 const tokenBlacklistModel = require("../models/blacklist.model")
-const cookieParser = require("cookie-parser")
+
+const isProduction = process.env.NODE_ENV === "production"
+const authCookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax"
+}
 
 /**
  * @name registerUserController 
@@ -43,10 +49,11 @@ async function registerUserController(req, res) {
         { expiresIn: "1d" }
     )
 
-    res.cookie("token", token)
+    res.cookie("token", token, authCookieOptions)
 
     res.status(201).json({
         message: "user Resigtered successfully",
+        token,
         user: {
             id: user._id,
             username: user.username,
@@ -85,10 +92,11 @@ async function loginUserController(req, res) {
         process.env.JWT_SECRET,
         { expiresIn: "1d" })
 
-    res.cookie("token", token)
+    res.cookie("token", token, authCookieOptions)
 
     res.status(200).json({
         message: "user loggedIN successfully",
+        token,
         user: {
             id: user._id,
             username: user.username,
@@ -104,13 +112,17 @@ async function loginUserController(req, res) {
  */
 
 async function logoutUserController(req, res) {
-    const token = req.cookies.token
+    const authorization = req.get("authorization")
+    const bearerToken = authorization?.startsWith("Bearer ")
+        ? authorization.slice("Bearer ".length)
+        : null
+    const token = bearerToken || req.cookies.token
 
     if (token) {
         await tokenBlacklistModel.create({ token })
     }
 
-    res.clearCookie("token")
+    res.clearCookie("token", authCookieOptions)
 
     res.status(200).json({
         message: "User logged out successfully"
